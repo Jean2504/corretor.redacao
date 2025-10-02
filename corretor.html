@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Corretor ENEM (estilo TRI) — plataforma</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#7c3aed;--muted:#94a3b8;--glass:rgba(255,255,255,0.04)}
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071022 0%,#07112a 60%);color:#e6eef8;padding:28px}
+    .container{max-width:1100px;margin:0 auto}
+    header{display:flex;gap:16px;align-items:center;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:18px;box-shadow:0 6px 20px rgba(2,6,23,0.6)}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px;margin-top:16px}
+    textarea{width:100%;min-height:320px;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:var(--glass);color:inherit;resize:vertical}
+    label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
+    input[type=text], select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    button{background:var(--accent);border:none;color:white;padding:10px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+    .smallbtn{background:transparent;border:1px solid rgba(255,255,255,0.05);padding:8px;border-radius:8px}
+    .score{font-size:28px;font-weight:700;color:var(--accent)}
+    .compet{margin-bottom:12px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02)}
+    .meter{height:10px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden}
+    .meter > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#5b21b6);width:0%}
+    .feedback{font-size:13px;color:var(--muted);line-height:1.4}
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+    .row{display:flex;gap:10px;align-items:center}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:12px}
+    .hint{font-size:12px;color:#bcd0ff}
+    pre{white-space:pre-wrap;font-size:13px}
+    .history-item{padding:10px;border-bottom:1px solid rgba(255,255,255,0.05)}
+    .history-item:hover{background:rgba(255,255,255,0.04);cursor:pointer}
+    @media(max-width:980px){.grid{grid-template-columns:1fr;}
+      .score{font-size:22px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Corretor de Redação — estilo ENEM (rubrica + heurística TRI)</h1>
+        <p class="lead">Cole sua redação, escreva o tema/prompt, clique em "Corrigir". É heurístico — usa regras simples pra simular a rubrica do ENEM. Use pra treinar rápido.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <label for="prompt">Tema / Enunciado (escreva o enunciado do seu treino)</label>
+        <input id="prompt" placeholder="Ex.: Desafios da educação no Brasil"/>
+
+        <label style="margin-top:12px">Sua redação</label>
+        <textarea id="essay" placeholder="Cole sua redação aqui... (mín. 120 palavras recomendado)"></textarea>
+
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="analyze">Corrigir</button>
+          <button class="smallbtn" id="sample">Carregar redação exemplo</button>
+          <button class="smallbtn" id="clear">Limpar</button>
+          <button class="smallbtn" id="download">Baixar resultado</button>
+        </div>
+
+        <div style="margin-top:12px;color:var(--muted);font-size:13px">
+          <strong>Observação</strong>: Isto NÃO substitui uma correção humana ou o sistema oficial do ENEM. Aqui a gente simula a rubrica: cada competência recebe 0–200 e o total vai até 1000.
+        </div>
+      </div>
+
+      <div>
+        <div class="card" id="resultsCard">
+          <div class="row" style="justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="color:var(--muted);font-size:13px">Resultado aproximado</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+                <div class="score" id="totalScore">—</div>
+                <div style="font-size:13px;color:var(--muted)">/1000</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;color:var(--muted)">Tempo estimado de treino</div>
+              <div style="font-weight:700">rápido</div>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0">
+
+          <div id="competences"></div>
+
+          <div style="margin-top:12px">
+            <div style="font-weight:700;margin-bottom:6px">Feedback geral</div>
+            <div class="feedback" id="generalFeedback">Nenhuma correção ainda. Cole a redação e clique em <em>Corrigir</em>.</div>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="card">
+          <div style="font-weight:700">Histórico de Redações</div>
+          <div id="historyList" style="max-height:220px;overflow:auto;margin-top:8px;color:var(--muted);font-size:13px">
+            Nenhum histórico ainda.
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="card">
+          <div style="font-weight:700">Como a correção funciona (resumão)</div>
+          <ul style="margin:8px 0 0 18px;color:var(--muted)">
+            <li>Detecta estrutura (parágrafos, conectivos, extensão) e checa elementos de cada competência.</li>
+            <li>Avalia se há proposta de intervenção clara (agente, ação, finalidade, meios, respeito aos direitos humanos).</li>
+            <li>Usa palavras-chave do enunciado para checar pertinência ao tema.</li>
+            <li>É automático e aproximado — ótimo pra revisão rápida, mas corrija com professor depois.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer style="text-align:center">Feito pra treinar — use com responsabilidade. Versão 1.1</footer>
+  </div>
+
+<script>
+// helpers
+function countWords(s){return (s.trim().length===0)?0: s.trim().split(/\s+/).length}
+function countSentences(s){return (s.match(/[\.!?]+/g)||[]).length}
+function countParagraphs(s){return s.split(/\n{1,}/g).filter(t=>t.trim().length).length}
+function pct(v){return Math.max(0,Math.min(100,Math.round(v)))}
+
+// keyword overlap
+function keywordScore(prompt, essay){
+  if(!prompt||prompt.trim().length<3) return 50;
+  const pWords = prompt.toLowerCase().replace(/[^a-z\u00C0-\u017F\s]/g,'').split(/\s+/).filter(Boolean);
+  const eWords = essay.toLowerCase().replace(/[^a-z\u00C0-\u017F\s]/g,'').split(/\s+/).filter(Boolean);
+  const setE = new Set(eWords);
+  let hit=0; pWords.forEach(w=>{ if(setE.has(w)) hit++ });
+  const ratio = hit / Math.max(1,pWords.length);
+  return Math.round(ratio*100);
+}
+
+function grammarHeuristic(essay){
+  const longWords = essay.split(/\s+/).filter(w=>w.length>2).length;
+  const total = Math.max(1,essay.split(/\s+/).length);
+  const longRatio = longWords/total;
+  const exclam = (essay.match(/!+/g)||[]).length;
+  const weirdChars = (essay.match(/[^\w\s\u00C0-\u017F\.,;:'"\-\(\)\?\!]/g)||[]).length;
+  let score = 50 + (longRatio-0.6)*60 - exclam*4 - weirdChars*3;
+  return pct(score);
+}
+
+function interventionScore(essay){
+  const s = essay.toLowerCase();
+  const signals = ['proposta','sugest','implemen','realizar','fomentar','promover','garantir','direito','direitos humanos','respeito','política','programa','ação','autoridade','governo','comunidade','sociedade'];
+  let hits = 0; signals.forEach(w=>{ if(s.includes(w)) hits++ });
+  const agent = ['município','estado','governo','prefeitura','comunidade','escolas','familias','empresa','sociedade'];
+  const hasAgent = agent.some(a=>s.includes(a));
+  const hasAction = signals.some(sig=>s.includes(sig));
+  const hasPurpose = s.includes('para')||s.includes('a fim de')||s.includes('com o objetivo');
+  let base = pct( (hits / signals.length) * 100 );
+  if(hasAgent && hasAction && hasPurpose) base = Math.max(base,75);
+  return base;
+}
+
+function argumentScore(essay){
+  const s = essay.toLowerCase();
+  const argWords = ['porque','pois','portanto','logo','então','por isso','uma vez que','além disso','por outro lado','contudo','no entanto','assim','consequentemente'];
+  let hits = 0; argWords.forEach(w=>{ if(s.includes(w)) hits++ });
+  const unique = new Set(essay.toLowerCase().split(/\s+/)).size;
+  let score = 30 + hits*8 + Math.min(30, Math.log(Math.max(1,unique))*10);
+  return pct(score);
+}
+
+function cohesionScore(essay){
+  const transitions = ['além disso','por outro lado','em primeiro lugar','em segundo lugar','por fim','finalmente','primeiramente','todavia','contudo','no entanto'];
+  let hits = 0; transitions.forEach(t=>{ if(essay.toLowerCase().includes(t)) hits++ });
+  const paras = countParagraphs(essay);
+  let score = 30 + hits*12 + Math.min(30, paras*8);
+  return pct(score);
+}
+
+function relevanceScore(prompt,essay){return keywordScore(prompt, essay);}
+
+function mapTo200(p){ return Math.round((Math.max(0,Math.min(100,p)) / 100)*200); }
+
+function analyze(){
+  const essay = document.getElementById('essay').value.trim();
+  const prompt = document.getElementById('prompt').value.trim();
+  if(!essay){ alert('Cola a redação aí.'); return }
+
+  const words = countWords(essay);
+  const sents = countSentences(essay);
+  const paras = countParagraphs(essay);
+
+  const grammarPct = grammarHeuristic(essay);
+  const comp1 = mapTo200(grammarPct);
+
+  const relPct = relevanceScore(prompt,essay);
+  let comp2pct = (relPct*0.6 + (words>=120?80: (words/120)*80))*0.75;
+  comp2pct = pct(comp2pct);
+  const comp2 = mapTo200(comp2pct);
+
+  const coh = cohesionScore(essay);
+  const comp3 = mapTo200(coh);
+
+  const arg = argumentScore(essay);
+  const comp4 = mapTo200(arg);
+
+  const inter = interventionScore(essay);
+  const comp5 = mapTo200(inter);
+
+  const total = comp1+comp2+comp3+comp4+comp5;
+
+  document.getElementById('totalScore').innerText = total;
+
+  const comps = [
+    {title:'Competência I — Domínio da norma culta', score:comp1, pct:grammarPct, feedback: generateFeedback1(grammarPct)},
+    {title:'Competência II — Compreensão do tema', score:comp2, pct:comp2pct, feedback: generateFeedback2(comp2pct, words, prompt)},
+    {title:'Competência III — Seleção/organização de informações', score:comp3, pct:coh, feedback: generateFeedback3(coh, paras)},
+    {title:'Competência IV — Argumentação', score:comp4, pct:arg, feedback: generateFeedback4(arg)},
+    {title:'Competência V — Proposta de intervenção', score:comp5, pct:inter, feedback: generateFeedback5(inter)}
+  ];
+
+  const container = document.getElementById('competences'); container.innerHTML='';
+  comps.forEach(c=>{
+    const div = document.createElement('div'); div.className='compet';
+    div.innerHTML = `<div style=\"display:flex;justify-content:space-between;align-items:center\"><div style=\"font-weight:700\">${c.title}</div><div style=\"text-align:right\"><div style=\"font-weight:700\">${c.score}</div><div style=\"font-size:12px;color:var(--muted)\">${Math.round(c.score/2)} / 100</div></div></div><div style=\"margin-top:8px\"><div class=\"meter\"><i style=\"width:${pct(c.pct)}%\"></i></div></div><div style=\"margin-top:8px;color:var(--muted);font-size:13px\">${c.feedback}</div>`;
+    container.appendChild(div);
+  });
+
+  const gf = [];
+  if(words<120) gf.push('Redação curta — tenta chegar em pelo menos 120 palavras.');
+  if(paras<3) gf.push('Organiza melhor: introdução, desenvolvimento e conclusão.');
+  if(comp5<80) gf.push('Proposta de intervenção fraca ou ausente.');
+  if(comp1<100) gf.push('Revisa norma culta.');
+  if(gf.length===0) gf.push('Parabéns — texto coerente. Compare com uma correção humana.');
+  document.getElementById('generalFeedback').innerText = gf.join(' ');
+
+  const result = {total, comps, words, paras, essay, prompt, date: new Date().toLocaleString()};
+  window._lastResult = result;
+
+  saveToHistory(result);
+}
+
+function generateFeedback1(pct){
+  if(pct>85) return 'Linguagem formal e boa fluidez.';
+  if(pct>60) return 'Registro adequado, revise acentuação.';
+  if(pct>35) return 'Muitos sinais de informalidade.';
+  return 'Registro muito informal.';
+}
+function generateFeedback2(pct, words, prompt){
+  if(pct>75) return 'Tema bem entendido.';
+  if(words<120) return 'Texto curto — desenvolve mais.';
+  if(pct>45) return 'Entendimento médio do tema.';
+  return 'Desvio do tema.';
+}
+function generateFeedback3(pct
